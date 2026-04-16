@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     uint16_t packet_count = 0;
     while ((res = pcap_next_ex(handle, &header, &packet)) == 1) {
         packet_count++;
-        printf("Packet Number: %d, Packet Len: %d\n\n", packet_count, header->len);
+        printf("Packet number: %d  Packet Len: %d\n\n", packet_count, header->len);
         ethernet(packet);
     }
 
@@ -54,7 +54,7 @@ void ethernet(const u_char *packet) {
 
 void arp(const u_char *packet) {
     // Process ARP header
-    printf("\tARP Header\n");
+    printf("\tARP header\n");
 
     if (packet[21] == 0x01) {
         printf("\t\tOpcode: Request\n");
@@ -99,9 +99,9 @@ void ip(const u_char *packet) {
 void icmp(const u_char *packet) {
     // Process ICMP header
     printf("\tICMP Header\n");
-    if (packet[34] == 0x00) {
+    if (packet[14 + ((packet[14] & 0x0F) * 4)] == 0x00) {
         printf("\t\tType: Reply\n\n");
-    } else if (packet[34] == 0x08) {
+    } else if (packet[14 + ((packet[14] & 0x0F) * 4)] == 0x08) {
         printf("\t\tType: Request\n\n");
     }
 }
@@ -111,24 +111,24 @@ void tcp(const u_char *packet) {
     printf("\tTCP Header\n");
     printf("\t\tSegment Length: %u\n", (two_bytes_ntohs(&packet[16], &packet[17]) - (packet[14] & 0x0F) * 4));
 
-    if (two_bytes_ntohs(&packet[34], &packet[35]) == 80) {
-        printf("\t\tSource Port: HTTP\n");
+    if (two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4)], &packet[14 + ((packet[14] & 0x0F) * 4) + 1]) == 80) {
+        printf("\t\tSource Port:  HTTP\n");
     } else {
-        printf("\t\tSource Port: %u\n", two_bytes_ntohs(&packet[34], &packet[35]));
+        printf("\t\tSource Port:  %u\n", two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4)], &packet[14 + ((packet[14] & 0x0F) * 4) + 1]));
     }
 
-    if (two_bytes_ntohs(&packet[36], &packet[37]) == 80) {
-        printf("\t\tDest Port: HTTP\n");
+    if (two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4) + 2], &packet[14 + ((packet[14] & 0x0F) * 4) + 3]) == 80) {
+        printf("\t\tDest Port:  HTTP\n");
     } else {
-        printf("\t\tDest Port: %u\n", two_bytes_ntohs(&packet[36], &packet[37]));
+        printf("\t\tDest Port:  %u\n", two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4) + 2], &packet[14 + ((packet[14] & 0x0F) * 4) + 3]));
     }
-    printf("\t\tSequence Number: %u\n", four_bytes_ntohl(&packet[38], &packet[39], &packet[40], &packet[41]));
-    printf("\t\tACK Number: %u\n", four_bytes_ntohl(&packet[42], &packet[43], &packet[44], &packet[45]));
-    printf("\t\tSYN Flag: %s\n", (packet[47] & 0x02) ? "Yes" : "No");
-    printf("\t\tRST Flag: %s\n", (packet[47] & 0x04) ? "Yes" : "No");
-    printf("\t\tFIN Flag: %s\n", (packet[47] & 0x01) ? "Yes" : "No");
-    printf("\t\tACK Flag: %s\n", (packet[47] & 0x10) ? "Yes" : "No");
-    printf("\t\tWindow Size: %u\n", two_bytes_ntohs(&packet[48], &packet[49]));
+    printf("\t\tSequence Number: %u\n", four_bytes_ntohl(&packet[14 + ((packet[14] & 0x0F) * 4) + 4], &packet[14 + ((packet[14] & 0x0F) * 4) + 5], &packet[14 + ((packet[14] & 0x0F) * 4) + 6], &packet[14 + ((packet[14] & 0x0F) * 4) + 7]));
+    printf("\t\tACK Number: %u\n", four_bytes_ntohl(&packet[14 + ((packet[14] & 0x0F) * 4) + 8], &packet[14 + ((packet[14] & 0x0F) * 4) + 9], &packet[14 + ((packet[14] & 0x0F) * 4) + 10], &packet[14 + ((packet[14] & 0x0F) * 4) + 11]));
+    printf("\t\tSYN Flag: %s\n", (packet[14 + ((packet[14] & 0x0F) * 4) + 13] & 0x02) ? "Yes" : "No");
+    printf("\t\tRST Flag: %s\n", (packet[14 + ((packet[14] & 0x0F) * 4) + 13] & 0x04) ? "Yes" : "No");
+    printf("\t\tFIN Flag: %s\n", (packet[14 + ((packet[14] & 0x0F) * 4) + 13] & 0x01) ? "Yes" : "No");
+    printf("\t\tACK Flag: %s\n", (packet[14 + ((packet[14] & 0x0F) * 4) + 13] & 0x10) ? "Yes" : "No");
+    printf("\t\tWindow Size: %u\n", two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4) + 14], &packet[14 + ((packet[14] & 0x0F) * 4) + 15]));
     tcp_checksum(packet);
     printf("\n");
 }
@@ -136,8 +136,17 @@ void tcp(const u_char *packet) {
 void udp(const u_char *packet) {
     // Process UDP header
     printf("\tUDP Header\n");
-    printf("\t\tSource Port: %u\n", two_bytes_ntohs(&packet[34], &packet[35]));
-    printf("\t\tDest Port: %u\n\n", two_bytes_ntohs(&packet[36], &packet[37]));
+    if (two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4)], &packet[14 + ((packet[14] & 0x0F) * 4) + 1]) == 53) {
+        printf("\t\tSource Port:  DNS\n");
+    } else {
+        printf("\t\tSource Port:  %u\n", two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4)], &packet[14 + ((packet[14] & 0x0F) * 4) + 1]));
+    }
+
+    if (two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4) + 2], &packet[14 + ((packet[14] & 0x0F) * 4) + 3]) == 53) {
+        printf("\t\tDest Port:  DNS\n");
+    } else {
+        printf("\t\tDest Port:  %u\n\n", two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4) + 2], &packet[14 + ((packet[14] & 0x0F) * 4) + 3]));
+    }
 }
 
 /* HELPER FUNCTIONS */
@@ -172,11 +181,42 @@ void ip_checksum(const u_char *packet) {
 }
 
 void tcp_checksum(const u_char *packet) {
-    // Calculate TCP checksum using TCP segment length = Total IP length - IP header length
-    u_short checksum = in_cksum((unsigned short *)(packet + 14), (two_bytes_ntohs(&packet[16], &packet[17]) - (packet[14] & 0x0F) * 4));
-    if (checksum == 0) {
-        printf("\t\tChecksum: Correct (0x%02x%02x)\n", packet[50], packet[51]);
-    } else {
-        printf("\t\tChecksum: Incorrect (0x%02x%02x)\n", packet[50], packet[51]);
+    const u_char *ip_hdr = packet + 14;
+    const u_char *tcp_seg = packet + 14 + (packet[14] & 0x0F) * 4;
+
+    int buf_len = 12 + two_bytes_ntohs(&packet[16], &packet[17]) - (packet[14] & 0x0F) * 4;
+    u_char *buf = malloc(buf_len);
+    if (buf == NULL) {
+        fprintf(stderr, "malloc failed in tcp_checksum\n");
+        return;
     }
+
+    /* Build pseudo header */
+    /* source IP */
+    memcpy(buf,     ip_hdr + 12, 4);   // buf[0..3] = source IP
+    /* dest IP */ 
+    memcpy(buf + 4, ip_hdr + 16, 4);   // buf[4..7] = dest IP
+    /* zero */
+    buf[8] = 0x00;                     // buf[8] = zero
+    /* protocol */
+    buf[9] = ip_hdr[9];                // buf[9] = protocol (TCP is 6)    
+
+    /* TCP length */
+    uint16_t tcp_len_net = htons((uint16_t)two_bytes_ntohs(&packet[16], &packet[17]) - (packet[14] & 0x0F) * 4);
+    memcpy(buf + 10, &tcp_len_net, 2); // buf[10..11] = TCP length in network byte order
+
+    /* Copy TCP header + data */
+    memcpy(buf + 12, tcp_seg, two_bytes_ntohs(&packet[16], &packet[17]) - (packet[14] & 0x0F) * 4); // buf[12..] = TCP header + data
+
+    u_short checksum = in_cksum((unsigned short *)buf, buf_len);
+
+    if (checksum == 0) {
+        printf("\t\tChecksum: Correct (0x%02x%02x)\n",
+               tcp_seg[16], tcp_seg[17]);
+    } else {
+        printf("\t\tChecksum: Incorrect (0x%02x%02x)\n",
+               tcp_seg[16], tcp_seg[17]);
+    }
+
+    free(buf);
 }
