@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     uint16_t packet_count = 0;
     while ((res = pcap_next_ex(handle, &header, &packet)) == 1) {
         packet_count++;
-        printf("Packet number: %d  Packet Len: %d\n\n", packet_count, header->len);
+        printf("\nPacket number: %d  Packet Len: %d\n", packet_count, header->len);
         ethernet(packet);
     }
 
@@ -39,22 +39,22 @@ int main(int argc, char *argv[]) {
 
 void ethernet(const u_char *packet) {
     // Process Ethernet header
-    printf("\tEthernet Header\n");
+    printf("\n\tEthernet Header\n");
     printf("\t\tDest MAC: %01x:%01x:%01x:%01x:%01x:%01x\n", packet[0], packet[1], packet[2], packet[3], packet[4], packet[5]);
     printf("\t\tSource MAC: %01x:%01x:%01x:%01x:%01x:%01x\n", packet[6], packet[7], packet[8], packet[9], packet[10], packet[11]);
 
     if (packet[12] == 0x08 && packet[13] == 0x00) {
-        printf("\t\tType: IP\n\n");
+        printf("\t\tType: IP\n");
         ip(packet);
     } else if (packet[12] == 0x08 && packet[13] == 0x06) {
-        printf("\t\tType: ARP\n\n");
+        printf("\t\tType: ARP\n");
         arp(packet);
     }
 }
 
 void arp(const u_char *packet) {
     // Process ARP header
-    printf("\tARP header\n");
+    printf("\n\tARP header\n");
 
     if (packet[21] == 0x01) {
         printf("\t\tOpcode: Request\n");
@@ -65,12 +65,12 @@ void arp(const u_char *packet) {
     printf("\t\tSender MAC: %01x:%01x:%01x:%01x:%01x:%01x\n", packet[22], packet[23], packet[24], packet[25], packet[26], packet[27]);
     printf("\t\tSender IP: %u.%u.%u.%u\n", packet[28], packet[29], packet[30], packet[31]);
     printf("\t\tTarget MAC: %01x:%01x:%01x:%01x:%01x:%01x\n", packet[32], packet[33], packet[34], packet[35], packet[36], packet[37]);
-    printf("\t\tTarget IP: %u.%u.%u.%u\n\n", packet[38], packet[39], packet[40], packet[41]);
+    printf("\t\tTarget IP: %u.%u.%u.%u\n", packet[38], packet[39], packet[40], packet[41]);
 }
 
 void ip(const u_char *packet) {
     // Process IP header
-    printf("\tIP Header\n");
+    printf("\n\tIP Header\n");
 
     printf("\t\tIP PDU Len: %u\n", two_bytes_ntohs(&packet[16], &packet[17]));
     printf("\t\tHeader Len (bytes): %u\n", (packet[14] & 0x0F) * 4);
@@ -79,36 +79,43 @@ void ip(const u_char *packet) {
         printf("\t\tProtocol: ICMP\n");
         ip_checksum(packet);
         printf("\t\tSender IP: %u.%u.%u.%u\n", packet[26], packet[27], packet[28], packet[29]);
-        printf("\t\tDest IP: %u.%u.%u.%u\n\n", packet[30], packet[31], packet[32], packet[33]);
+        printf("\t\tDest IP: %u.%u.%u.%u\n", packet[30], packet[31], packet[32], packet[33]);
         icmp(packet);
     } else if (packet[23] == 0x06) {
         printf("\t\tProtocol: TCP\n");
         ip_checksum(packet);
         printf("\t\tSender IP: %u.%u.%u.%u\n", packet[26], packet[27], packet[28], packet[29]);
-        printf("\t\tDest IP: %u.%u.%u.%u\n\n", packet[30], packet[31], packet[32], packet[33]);
+        printf("\t\tDest IP: %u.%u.%u.%u\n", packet[30], packet[31], packet[32], packet[33]);
         tcp(packet);
     } else if (packet[23] == 0x11) {
         printf("\t\tProtocol: UDP\n");
         ip_checksum(packet);
         printf("\t\tSender IP: %u.%u.%u.%u\n", packet[26], packet[27], packet[28], packet[29]);
-        printf("\t\tDest IP: %u.%u.%u.%u\n\n", packet[30], packet[31], packet[32], packet[33]);
+        printf("\t\tDest IP: %u.%u.%u.%u\n", packet[30], packet[31], packet[32], packet[33]);
         udp(packet);
+    } else {
+        printf("\t\tProtocol: Unknown\n");
+        ip_checksum(packet);
+        printf("\t\tSender IP: %u.%u.%u.%u\n", packet[26], packet[27], packet[28], packet[29]);
+        printf("\t\tDest IP: %u.%u.%u.%u\n", packet[30], packet[31], packet[32], packet[33]);
     }
 }
 
 void icmp(const u_char *packet) {
     // Process ICMP header
-    printf("\tICMP Header\n");
+    printf("\n\tICMP Header\n");
     if (packet[14 + ((packet[14] & 0x0F) * 4)] == 0x00) {
-        printf("\t\tType: Reply\n\n");
+        printf("\t\tType: Reply\n");
     } else if (packet[14 + ((packet[14] & 0x0F) * 4)] == 0x08) {
-        printf("\t\tType: Request\n\n");
+        printf("\t\tType: Request\n");
+    } else {
+        printf("\t\tType: %u\n", packet[14 + ((packet[14] & 0x0F) * 4)]);
     }
 }
 
 void tcp(const u_char *packet) {
     // Process TCP header
-    printf("\tTCP Header\n");
+    printf("\n\tTCP Header\n");
     printf("\t\tSegment Length: %u\n", (two_bytes_ntohs(&packet[16], &packet[17]) - (packet[14] & 0x0F) * 4));
 
     if (two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4)], &packet[14 + ((packet[14] & 0x0F) * 4) + 1]) == 80) {
@@ -130,12 +137,11 @@ void tcp(const u_char *packet) {
     printf("\t\tACK Flag: %s\n", (packet[14 + ((packet[14] & 0x0F) * 4) + 13] & 0x10) ? "Yes" : "No");
     printf("\t\tWindow Size: %u\n", two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4) + 14], &packet[14 + ((packet[14] & 0x0F) * 4) + 15]));
     tcp_checksum(packet);
-    printf("\n");
 }
 
 void udp(const u_char *packet) {
     // Process UDP header
-    printf("\tUDP Header\n");
+    printf("\n\tUDP Header\n");
     if (two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4)], &packet[14 + ((packet[14] & 0x0F) * 4) + 1]) == 53) {
         printf("\t\tSource Port:  DNS\n");
     } else {
@@ -145,7 +151,7 @@ void udp(const u_char *packet) {
     if (two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4) + 2], &packet[14 + ((packet[14] & 0x0F) * 4) + 3]) == 53) {
         printf("\t\tDest Port:  DNS\n");
     } else {
-        printf("\t\tDest Port:  %u\n\n", two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4) + 2], &packet[14 + ((packet[14] & 0x0F) * 4) + 3]));
+        printf("\t\tDest Port:  %u\n", two_bytes_ntohs(&packet[14 + ((packet[14] & 0x0F) * 4) + 2], &packet[14 + ((packet[14] & 0x0F) * 4) + 3]));
     }
 }
 
@@ -217,6 +223,5 @@ void tcp_checksum(const u_char *packet) {
         printf("\t\tChecksum: Incorrect (0x%02x%02x)\n",
                tcp_seg[16], tcp_seg[17]);
     }
-
     free(buf);
 }
